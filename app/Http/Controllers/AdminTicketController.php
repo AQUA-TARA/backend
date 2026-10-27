@@ -356,8 +356,19 @@ class AdminTicketController extends Controller
         // Tren laporan 7 hari terakhir
         $trendLabels = [];
         $trendData = [];
+        // Build date range: last 7 days (including today)
+        $endDate = now();
+        $startDate = $endDate->copy()->subDays(6)->startOfDay();
+        // Single aggregated query: count reports per date (YYYY‑MM‑DD)
+        $reportsByDate = \App\Models\Report::whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw('DATE(created_at) as report_date, COUNT(*) as cnt')
+            ->groupBy('report_date')
+            ->orderBy('report_date')
+            ->pluck('cnt', 'report_date')
+            ->toArray();
+        // Ensure we have an entry for each of the 7 days, even if count is zero
         for ($i = 6; $i >= 0; $i--) {
-            $date = now()->subDays($i);
+            $date = $endDate->copy()->subDays($i);
             $dayName = match ($date->dayOfWeek) {
                 0 => 'Min',
                 1 => 'Sen',
@@ -368,8 +379,8 @@ class AdminTicketController extends Controller
                 6 => 'Sab',
             };
             $trendLabels[] = $dayName;
-            $count = \App\Models\Report::whereDate('created_at', $date->toDateString())->count();
-            $trendData[] = $count;
+            $dateKey = $date->format('Y-m-d');
+            $trendData[] = $reportsByDate[$dateKey] ?? 0;
         }
 
         // Urgent tickets: ambil tiket aktif
