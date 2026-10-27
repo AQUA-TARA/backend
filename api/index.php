@@ -41,6 +41,8 @@ $app = require_once __DIR__ . '/../bootstrap/app.php';
 
 if (isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL']) || getenv('VERCEL')) {
     $app->useStoragePath($storagePath);
+    $_ENV['VIEW_COMPILED_PATH'] = $storagePath . '/framework/views';
+    putenv('VIEW_COMPILED_PATH=' . $storagePath . '/framework/views');
 }
 
 $request = Request::capture();
