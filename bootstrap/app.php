@@ -21,6 +21,6 @@ use Illuminate\Foundation\Application;
         })
         ->withExceptions(function (Exceptions $exceptions): void {
             $exceptions->shouldRenderJsonWhen(
-                fn (Request $request) => true,
+                fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
             );
         })->create();
