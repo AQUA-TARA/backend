@@ -43,6 +43,14 @@ if (isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL']) || getenv('VERCEL')) {
     $app->useStoragePath($storagePath);
 }
 
+// Attach CORS headers to every response
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+header("Access-Control-Allow-Origin: {$origin}");
+header('Access-Control-Allow-Credentials: true');
+header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Authorization, Content-Type, Accept, X-Requested-With, Application, Origin');
+
 $request = Request::capture();
-$app->handleRequest($request);
+$response = $app->handleRequest($request);
+
 

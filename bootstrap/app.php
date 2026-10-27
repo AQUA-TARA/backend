@@ -14,10 +14,10 @@
             health: '/up',
         )
         ->withMiddleware(function (Middleware $middleware): void {
+            // Add global CORS handling at very front of middleware stack
+            $middleware->prepend(Illuminate\Http\Middleware\HandleCors::class);
             // Register custom middleware aliases
             $middleware->alias(['supabase.jwt' => App\Http\Middleware\VerifySupabaseJwt::class]);
-            // Add global CORS handling
-            $middleware->append(Illuminate\Http\Middleware\HandleCors::class);
         })
         ->withExceptions(function (Exceptions $exceptions): void {
             $exceptions->shouldRenderJsonWhen(
