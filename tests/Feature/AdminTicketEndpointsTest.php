@@ -149,12 +149,58 @@ class AdminTicketEndpointsTest extends TestCase
                      'data' => [
                          'total_laporan_hari_ini',
                          'rata_rata_kekeruhan',
+                         'rata_rata_tekanan',
                          'active_maintenance',
                          'system_uptime',
+                         'persentase_node_aktif',
+                         'jumlah_node_aktif',
+                         'jumlah_node_nonaktif',
+                         'total_node',
                          'tren_laporan' => ['labels', 'data'],
                          'urgent_tickets',
                      ],
                  ]);
+    }
+
+    public function test_admin_dashboard_node_percentage_scenarios()
+    {
+        $this->createLocalAdmin();
+        $token = $this->makeToken([]);
+
+        // Scenario 1: Zero nodes
+        \App\Models\IoTMeasurement::query()->delete();
+        \App\Models\IoTNode::query()->delete();
+
+        $responseZero = $this->withHeaders($this->authHeader($token))
+                             ->get('/api/admin/dashboard');
+        $responseZero->assertStatus(200)
+                     ->assertJsonPath('data.total_node', 0)
+                     ->assertJsonPath('data.jumlah_node_aktif', 0)
+                     ->assertJsonPath('data.jumlah_node_nonaktif', 0)
+                     ->assertJsonPath('data.persentase_node_aktif', 0);
+
+        // Scenario 2: All active nodes (2 active)
+        \App\Models\IoTNode::create(['hardware_id' => 'NODE-A-1', 'latitude' => 3.3, 'longitude' => 117.5, 'is_active' => true]);
+        \App\Models\IoTNode::create(['hardware_id' => 'NODE-A-2', 'latitude' => 3.4, 'longitude' => 117.6, 'is_active' => true]);
+
+        $responseAllActive = $this->withHeaders($this->authHeader($token))
+                                  ->get('/api/admin/dashboard');
+        $responseAllActive->assertStatus(200)
+                          ->assertJsonPath('data.total_node', 2)
+                          ->assertJsonPath('data.jumlah_node_aktif', 2)
+                          ->assertJsonPath('data.jumlah_node_nonaktif', 0)
+                          ->assertJsonPath('data.persentase_node_aktif', 100);
+
+        // Scenario 3: Partially inactive nodes (2 active, 1 inactive -> 2/3 = 66.7%)
+        \App\Models\IoTNode::create(['hardware_id' => 'NODE-A-3', 'latitude' => 3.5, 'longitude' => 117.7, 'is_active' => false]);
+
+        $responsePartial = $this->withHeaders($this->authHeader($token))
+                                ->get('/api/admin/dashboard');
+        $responsePartial->assertStatus(200)
+                        ->assertJsonPath('data.total_node', 3)
+                        ->assertJsonPath('data.jumlah_node_aktif', 2)
+                        ->assertJsonPath('data.jumlah_node_nonaktif', 1)
+                        ->assertJsonPath('data.persentase_node_aktif', 66.7);
     }
 
     public function test_admin_can_list_and_create_iot_nodes()

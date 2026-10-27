@@ -334,8 +334,24 @@ class AdminTicketController extends Controller
         }
         $avgTurbidityFormatted = $avgTurbidity !== null ? round((float) $avgTurbidity, 1) : null;
 
+        // Rata-rata tekanan dari pengukuran sensor IoT dalam 24 jam terakhir (atau keseluruhan jika kosong)
+        $avgPressure = \App\Models\IoTMeasurement::where('measured_at', '>=', now()->subHours(24))
+            ->whereNotNull('pressure')
+            ->avg('pressure');
+
+        if ($avgPressure === null) {
+            $avgPressure = \App\Models\IoTMeasurement::whereNotNull('pressure')->avg('pressure');
+        }
+        $avgPressureFormatted = $avgPressure !== null ? round((float) $avgPressure, 2) : null;
+
         // Active maintenance: jumlah tiket yang sedang dikerjakan
         $activeMaintenance = Ticket::whereIn('status', ['CONFIRMED', 'IN_PROGRESS'])->count();
+
+        // Status node IoT
+        $totalNode = \App\Models\IoTNode::count();
+        $jumlahNodeAktif = \App\Models\IoTNode::where('is_active', true)->count();
+        $jumlahNodeNonaktif = \App\Models\IoTNode::where('is_active', false)->count();
+        $persentaseNodeAktif = $totalNode > 0 ? round(($jumlahNodeAktif / $totalNode) * 100, 1) : 0;
 
         // Tren laporan 7 hari terakhir
         $trendLabels = [];
@@ -391,8 +407,13 @@ class AdminTicketController extends Controller
             'data' => [
                 'total_laporan_hari_ini' => $totalReportsToday,
                 'rata_rata_kekeruhan'    => $avgTurbidityFormatted,
+                'rata_rata_tekanan'      => $avgPressureFormatted,
                 'active_maintenance'     => $activeMaintenance,
                 'system_uptime'          => 99.9,
+                'persentase_node_aktif'  => $persentaseNodeAktif,
+                'jumlah_node_aktif'      => $jumlahNodeAktif,
+                'jumlah_node_nonaktif'   => $jumlahNodeNonaktif,
+                'total_node'             => $totalNode,
                 'tren_laporan'           => [
                     'labels' => $trendLabels,
                     'data'   => $trendData,
