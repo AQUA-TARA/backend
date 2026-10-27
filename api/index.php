@@ -35,17 +35,29 @@ if (isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL']) || getenv('VERCEL')) {
     }
 }
 
-require __DIR__ . '/../vendor/autoload.php';
+try {
+    require __DIR__ . '/../vendor/autoload.php';
 
-$app = require_once __DIR__ . '/../bootstrap/app.php';
+    $app = require_once __DIR__ . '/../bootstrap/app.php';
 
-if (isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL']) || getenv('VERCEL')) {
-    $app->useStoragePath($storagePath);
-    $_ENV['VIEW_COMPILED_PATH'] = $storagePath . '/framework/views';
-    putenv('VIEW_COMPILED_PATH=' . $storagePath . '/framework/views');
+    if (isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL']) || getenv('VERCEL')) {
+        $app->useStoragePath($storagePath);
+        $_ENV['VIEW_COMPILED_PATH'] = $storagePath . '/framework/views';
+        putenv('VIEW_COMPILED_PATH=' . $storagePath . '/framework/views');
+    }
+
+    $request = Request::capture();
+    $app->handleRequest($request);
+} catch (\Throwable $e) {
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'error' => true,
+        'message' => $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+        'trace' => explode("\n", $e->getTraceAsString())
+    ], JSON_PRETTY_PRINT);
 }
-
-$request = Request::capture();
-$response = $app->handleRequest($request);
 
 
